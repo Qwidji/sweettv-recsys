@@ -36,6 +36,14 @@ VALID_WEEKS = (21, 30)
 K = 5
 TOP_N = 50  # candidate list length per method, used by fusion
 SEED = 42
+# Scores reported by `kaggle competitions submissions` on 2026-10-24.
+KAGGLE_SCORES = [
+    ("submission_popularity.csv (unique viewers, weeks 29-30)", 0.27903, 0.27504),
+    ("submission_hybrid.csv (RRF, history by overlap)", 0.32225, 0.29500),
+    ("submission_history_days.csv (history by distinct days)", 0.35200, 0.32653),
+    ("submission_hybrid_days.csv (RRF, history by distinct days)", 0.35425, 0.33745),
+    ("submission_popularity_days.csv (user-days, weeks 29-30)", 0.29133, 0.28631),
+]
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -111,6 +119,25 @@ def history(train_us, pool, users):
     t = train_us[train_us.tv_show_id.isin(pool) & train_us.user_id.isin(users)]
     t = t.sort_values(["user_id", "overlap_sec"], ascending=[True, False], kind="stable")
     return {u: g.tv_show_id.tolist()[:TOP_N] for u, g in t.groupby("user_id", sort=False)}
+
+
+def popularity_days(train, pool, weeks):
+    """Pool shows ranked by distinct (user, day) pairs in `weeks`; ties by unique viewers."""
+    t = train[train.iso_week.between(*weeks) & train.tv_show_id.isin(pool)]
+    t = t.assign(day=t.view_start.dt.normalize())
+    g = t.groupby("tv_show_id").agg(viewers=("user_id", "nunique"))
+    g["user_days"] = t.drop_duplicates(["tv_show_id", "user_id", "day"]).groupby("tv_show_id").size()
+    return g.sort_values(["user_days", "viewers"], ascending=False, kind="stable").index.tolist()[:TOP_N]
+
+
+def history_days(train, pool, users):
+    """User's pool shows ranked by number of distinct days watched; ties by total overlap."""
+    t = train[train.tv_show_id.isin(pool) & train.user_id.isin(users)]
+    g = (t.assign(day=t.view_start.dt.normalize())
+         .groupby(["user_id", "tv_show_id"], as_index=False)
+         .agg(days=("day", "nunique"), overlap=("overlap_sec", "sum")))
+    g = g.sort_values(["user_id", "days", "overlap"], ascending=[True, False, False], kind="stable")
+    return {u: x.tv_show_id.tolist()[:TOP_N] for u, x in g.groupby("user_id", sort=False)}
 
 
 def build_matrix(train_us):
@@ -291,6 +318,21 @@ def main():
     for g in grid[:5]:
         print(f"  {g[0]:.5f} {g[1]:.5f} k0={g[2]} w_als={g[3]} w_pop={g[4]}")
 
+    # --- "distinct days" variants
+    print()
+    t0 = time.perf_counter()
+    hist_d = history_days(train, pool, set(eval_users))
+    record("History-days", "distinct days desc, pad popularity", hist_d, best_pop, time.perf_counter() - t0)
+
+    t0 = time.perf_counter()
+    fused = {u: fuse([hist_d.get(u, []), best_als.get(u, []), best_pop], (1, w_als, w_pop), k0) for u in eval_users}
+    record("Hybrid-days", f"RRF k0={k0}, w_hist=1, w_als={w_als}, w_pop={w_pop}, history by days",
+           fused, best_pop, time.perf_counter() - t0)
+
+    t0 = time.perf_counter()
+    pop_d = popularity_days(train, pool, (19, 20))
+    record("Popularity-days", "distinct (user, day) pairs, weeks 19-20", {}, pop_d, time.perf_counter() - t0)
+
     write_results(rows, facts, test_lines, grid, len(eval_users), len(eval_test))
 
 
@@ -309,7 +351,12 @@ def write_results(rows, facts, test_lines, grid, n_all, n_test):
     ]
     for r in rows:
         lines.append(f"| {r['method']} | {r['params']} | {r['map_all']:.5f} | {r['map_test']:.5f} | {r['sec']:.1f} |")
-    lines += ["", "Выбор лучшего ALS и весов Hybrid сделан по тому же valid, поэтому их оценки оптимистичны.", "",
+    lines += ["", "Выбор лучшего ALS и весов Hybrid сделан по тому же valid, поэтому их оценки оптимистичны. "
+              "Hybrid-days использует те же веса без повторного подбора.", "",
+              "## Kaggle (обучение на неделях 11–30, пул 31-42, `src/predict.py`)", "",
+              "| Сабмит | Public | Private |", "|---|---|---|"]
+    lines += [f"| {name} | {pub} | {priv} |" for name, pub, priv in KAGGLE_SCORES]
+    lines += ["",
               "## Hybrid: топ-5 конфигураций", "", "| MAP@5 (все) | MAP@5 (тестовые) | k0 | w_als | w_pop |",
               "|---|---|---|---|---|"]
     lines += [f"| {g[0]:.5f} | {g[1]:.5f} | {g[2]} | {g[3]} | {g[4]} |" for g in grid[:5]]

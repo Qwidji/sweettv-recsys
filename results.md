@@ -13,10 +13,23 @@
 | ALS | factors=32, reg=0.1, iter=20 | 0.48941 | 0.54618 | 1.5 |
 | ALS | factors=64, reg=0.01, iter=20 | 0.41814 | 0.45097 | 2.6 |
 | ALS | factors=64, reg=0.1, iter=20 | 0.41907 | 0.45197 | 2.6 |
-| Content | TF-IDF cat+genres+director+actors | 0.17469 | 0.19350 | 4.6 |
-| Hybrid | RRF k0=10, w_hist=1, w_als=0.5, w_pop=0.5 (ALS factors=32, reg=0.1) | 0.65976 | 0.77418 | 4.3 |
+| Content | TF-IDF cat+genres+director+actors | 0.17469 | 0.19350 | 4.4 |
+| Hybrid | RRF k0=10, w_hist=1, w_als=0.5, w_pop=0.5 (ALS factors=32, reg=0.1) | 0.65976 | 0.77418 | 4.2 |
+| History-days | distinct days desc, pad popularity | 0.65310 | 0.76823 | 0.4 |
+| Hybrid-days | RRF k0=10, w_hist=1, w_als=0.5, w_pop=0.5, history by days | 0.68553 | 0.79766 | 0.1 |
+| Popularity-days | distinct (user, day) pairs, weeks 19-20 | 0.61945 | 0.73167 | 0.0 |
 
-Выбор лучшего ALS и весов Hybrid сделан по тому же valid, поэтому их оценки оптимистичны.
+Выбор лучшего ALS и весов Hybrid сделан по тому же valid, поэтому их оценки оптимистичны. Hybrid-days использует те же веса без повторного подбора.
+
+## Kaggle (обучение на неделях 11–30, пул 31-42, `src/predict.py`)
+
+| Сабмит | Public | Private |
+|---|---|---|
+| submission_popularity.csv (unique viewers, weeks 29-30) | 0.27903 | 0.27504 |
+| submission_hybrid.csv (RRF, history by overlap) | 0.32225 | 0.295 |
+| submission_history_days.csv (history by distinct days) | 0.352 | 0.32653 |
+| submission_hybrid_days.csv (RRF, history by distinct days) | 0.35425 | 0.33745 |
+| submission_popularity_days.csv (user-days, weeks 29-30) | 0.29133 | 0.28631 |
 
 ## Hybrid: топ-5 конфигураций
 

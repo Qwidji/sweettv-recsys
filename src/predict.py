@@ -8,7 +8,8 @@ Usage: python src/predict.py   (writes submission_hybrid.csv, submission_popular
 import numpy as np
 import pandas as pd
 
-from eval import DATA, ROOT, SEED, als, build_matrix, finalize, fuse, history, popularity
+from eval import (DATA, ROOT, SEED, als, build_matrix, finalize, fuse, history, history_days, popularity,
+                  popularity_days)
 
 TRAIN_WEEKS = (11, 30)
 POP_WEEKS = (29, 30)
@@ -52,15 +53,24 @@ def main():
     print(f"submission users: {len(users)}; cold (no train): {sum(u not in train_users for u in users)}; "
           f"with pool history: {sum(u in hist for u in users)}; with ALS recs: {sum(u in als_recs for u in users)}")
 
-    hybrid = []
-    for u in users:
-        ranked = fuse([hist.get(u, []), als_recs.get(u, []), pop], (W_HIST, W_ALS, W_POP), K0)
-        hybrid.append(" ".join(map(str, finalize(ranked, pop))))
-    pop_row = " ".join(map(str, finalize([], pop)))
+    hist_d = history_days(train, pool, set(users))
+    pop_d = popularity_days(train, pool, POP_WEEKS)
+    print(f"popularity by user-days (weeks {POP_WEEKS}): top-5 {pop_d[:5]}")
 
+    def hybrid(h):
+        return [finalize(fuse([h.get(u, []), als_recs.get(u, []), pop], (W_HIST, W_ALS, W_POP), K0), pop)
+                for u in users]
+
+    variants = {
+        "submission_hybrid.csv": hybrid(hist),
+        "submission_popularity.csv": [finalize([], pop)] * len(users),
+        "submission_history_days.csv": [finalize(hist_d.get(u, []), pop) for u in users],
+        "submission_hybrid_days.csv": hybrid(hist_d),
+        "submission_popularity_days.csv": [finalize([], pop_d)] * len(users),
+    }
     outputs = {
-        "submission_hybrid.csv": pd.DataFrame({"user_id": template.user_id, "tv_show_id": hybrid}),
-        "submission_popularity.csv": pd.DataFrame({"user_id": template.user_id, "tv_show_id": pop_row}),
+        name: pd.DataFrame({"user_id": template.user_id, "tv_show_id": [" ".join(map(str, r)) for r in recs]})
+        for name, recs in variants.items()
     }
     for name, sub in outputs.items():
         check(sub, template, pool_set)
