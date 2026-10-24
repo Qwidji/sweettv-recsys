@@ -175,12 +175,25 @@ All submissions were late. Kaggle returned scores, but they were not included in
 
 **Next improvement:** Split the validation dataset into two parts: in the first part, determine the “viewing time” threshold (currently 300 seconds) and the hybrid model’s weights; in the second part, evaluate them objectively.
 
-## 6. AI Usage
+## 6. Disclosure of AI Use
 
-- [Which tools were used]
-- [For which stages]
-- [How results were verified]
-- [What was done manually]
+**Tools:** Claude Code — full source code, running experiments, submitting entries via the Kaggle CLI, report drafts, and formatting. Claude (app, Cowork mode) — planning prompts for Claude Code.
+
+**How AI was used:** generating code, debugging, presenting reports, and discussing how to interpret results.
+
+**What I have verified myself:**
+
+- manual AP@5 = 0.5433 for user 4537998735244442792, matching the result from the source code (0.543333);
+- A review of the source code showed that the matrix for the implicit method has the form “user × program” (eval.py:124) and the section reviewed was not filtered (eval.py:145), meaning the iteration rule is the same for all methods;
+- Manually verified the join example: the viewing time from 23:11:11 to 23:18:56 (465 seconds) falls entirely within the program’s time range from 22:50 to 00:40, with an overlap of 465;
+- Verified the file sizes and line counts against the problem’s requirements;
+- verified the scores in results.md against the Submissions page on Kaggle;
+- agreed that “Popularity-days” refers to (user, day) pairs, since interpreting it literally as “number of days” yields nearly identical values across all programs;
+- manually verified the MAP@5 unit test on a sample (truth [1,2,3], recs [1,4,2,5,6] → 0.5556).
+
+**The following parts were accepted without testing:** the TF-IDF and Content-based implementations, the RRF merge code, handling 13 overlapping schedule lines, the efficiency of the join operation, and edge cases beyond the three examples examined.
+
+**Work session:** Attached is the work session export file from Claude Code with no changes.
 
 ## References
 

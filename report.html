@@ -507,13 +507,21 @@
 <p>“Daily” variations appeared after the first submission on Kaggle. I subsequently tested them on the validation dataset, but this idea originated from the Kaggle leaderboard. The weight coefficients of the hybrid model were adjusted based on that very validation dataset, so the score of 0.686 was overly optimistic.</p>
 <p>All submissions were late. Kaggle returned scores, but they were not included in the leaderboard.</p>
 <p><strong>Next improvement:</strong> Split the validation dataset into two parts: in the first part, determine the “viewing time” threshold (currently 300 seconds) and the hybrid model’s weights; in the second part, evaluate them objectively.</p>
-<h2 id="ai-usage">6. AI Usage</h2>
+<h2 id="disclosure-of-ai-use">6. Disclosure of AI Use</h2>
+<p><strong>Tools:</strong> Claude Code — full source code, running experiments, submitting entries via the Kaggle CLI, report drafts, and formatting. Claude (app, Cowork mode) — planning prompts for Claude Code.</p>
+<p><strong>How AI was used:</strong> generating code, debugging, presenting reports, and discussing how to interpret results.</p>
+<p><strong>What I have verified myself:</strong></p>
 <ul>
-<li>[Which tools were used]</li>
-<li>[For which stages]</li>
-<li>[How results were verified]</li>
-<li>[What was done manually]</li>
+<li>manual AP@5 = 0.5433 for user 4537998735244442792, matching the result from the source code (0.543333);</li>
+<li>A review of the source code showed that the matrix for the implicit method has the form “user × program” (eval.py:124) and the section reviewed was not filtered (eval.py:145), meaning the iteration rule is the same for all methods;</li>
+<li>Manually verified the join example: the viewing time from 23:11:11 to 23:18:56 (465 seconds) falls entirely within the program’s time range from 22:50 to 00:40, with an overlap of 465;</li>
+<li>Verified the file sizes and line counts against the problem’s requirements;</li>
+<li>verified the scores in results.md against the Submissions page on Kaggle;</li>
+<li>agreed that “Popularity-days” refers to (user, day) pairs, since interpreting it literally as “number of days” yields nearly identical values across all programs;</li>
+<li>manually verified the MAP@5 unit test on a sample (truth [1,2,3], recs [1,4,2,5,6] → 0.5556).</li>
 </ul>
+<p><strong>The following parts were accepted without testing:</strong> the TF-IDF and Content-based implementations, the RRF merge code, handling 13 overlapping schedule lines, the efficiency of the join operation, and edge cases beyond the three examples examined.</p>
+<p><strong>Work session:</strong> Attached is the work session export file from Claude Code with no changes.</p>
 <h2 id="references">References</h2>
 <p>[1] Y. Hu, Y. Koren, C. Volinsky. Collaborative Filtering for Implicit Feedback Datasets. In <em>Proc. IEEE International Conference on Data Mining (ICDM)</em>, 2008.</p>
 <p>[2] P. Lops, M. de Gemmis, G. Semeraro. Content-based Recommender Systems: State of the Art and Trends. In <em>Recommender Systems Handbook</em>, Springer, 2011.</p>
