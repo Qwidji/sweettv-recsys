@@ -145,11 +145,35 @@ For a heavy test user (6,015 interactions, 634 programmes in training) and a lig
 
 ## 5. Discussion
 
-- [Interpretation: why viewing regularity (number of days) matters more than total time]
-- [Gap between validation and Kaggle: possible causes]
-- [Why ALS and the content model fall behind popularity]
-- [Limitations: unlabelled programmes, pool items unseen in training, weights tuned on validation]
-- [Future work]
+**Error case.** When running eval.py for the first time, ALS crashed: the values from build_matrix were unpacked in a different order, and the user IDs were assigned to the variable iids. Cause: The function returns (m, uids, iids, u_idx, i_idx), but when the function was called, the order was reversed. After fixing the error, I verified the results using a separate script, check_als.py: all 5 ALS recommendations for user 4537998735244442792 were present in the list of programs, and AP@5 = 0.5433 matched my manual calculation (hit rate at positions 2–5: (1/2 + 2/3 + 3/4 + 4/5) / 5).
+
+**What worked.**
+
+Movie viewing frequency proved to be the strongest signal. Ranking historical data by different numbers of days yielded a score of 0.653 on the validation dataset, compared to 0.563 when ranked by total time. These results were confirmed on Kaggle: 0.327 on the private dataset versus 0.295. It appears that longer movies attract more viewing seconds but are not rewatched, while shorter news segments are watched daily and replayed.
+
+The hybrid model (RRF based on daily history, ALS, and popularity) yielded the best results both on the validation dataset (0.686) and on Kaggle (private dataset: 0.337). The ranking of the methods on the validation dataset and on Kaggle matches, so I believe validation is useful for model selection, even though the absolute values differ significantly.
+
+**Surprising or ineffective findings.**
+
+Popularity (0.623) proved to be stronger than both ALS (0.489) and historical data based on overlap. I think the reason is that the actual user data is very extensive: an average of about 97 programs over 10 weeks, and popular news stories almost always appear in that data.
+
+The content-based method only achieved 0.175. Genre and actors do not explain why users tune in to TSN every night.
+
+The gap between the valid results (0.69) and the Kaggle results (0.34) is the same for all methods, including popularity, which means the issue isn’t just about weight selection. We don’t know how Kaggle defines “views” in the test, and I couldn’t verify this either.
+
+For users who watch very little (1 movie in the training set), all personalization methods rank this movie first, and the popularity method performs better (AP 0.10 vs. ≤ 0.067). This is just one example, not a general conclusion.
+
+**Limitations.**
+
+Only about 11% of the lines in the TV schedule have a program ID; the rest were discarded, even though the marked programs accounted for 51.6% of views longer than 5 minutes.
+
+The time zone check is weak: the match rate remains virtually unchanged when shifting from −3 to +3 hours (3.2–3.6%). I kept the shift at 0 because that is the maximum value and manual checks seemed reasonable, but I do not consider this conclusive evidence.
+
+“Daily” variations appeared after the first submission on Kaggle. I subsequently tested them on the validation dataset, but this idea originated from the Kaggle leaderboard. The weight coefficients of the hybrid model were adjusted based on that very validation dataset, so the score of 0.686 was overly optimistic.
+
+All submissions were late. Kaggle returned scores, but they were not included in the leaderboard.
+
+**Next improvement:** Split the validation dataset into two parts: in the first part, determine the “viewing time” threshold (currently 300 seconds) and the hybrid model’s weights; in the second part, evaluate them objectively.
 
 ## 6. AI Usage
 
