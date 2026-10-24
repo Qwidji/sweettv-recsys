@@ -1,6 +1,7 @@
 # Рекомендация телепрограмм sweet.tv по логу просмотров: популярность, история, ALS и их гибрид
 
 **Автор:** [Имя Фамилия]  ·  **Дата:** 24.10.2026
+
 **Соревнование:** Kaggle `sweettv-tv-program-recommender` [4]  ·  **Код:** https://github.com/Qwidji/sweettv-recsys
 
 ## Abstract
@@ -67,7 +68,7 @@
   - *Вариант History-days:* ранжирование по числу разных календарных дней просмотра, при равенстве — по overlap.
 - **ALS** [1, 3]. Матрица «пользователь × программа» с весом `log1p(Σ overlap_sec / 60)`, 20 итераций, `random_state = 42`. Сетка: factors ∈ {32, 64}, regularization ∈ {0,01; 0,1}. Оценки считаются как скалярное произведение факторов по программам пула, которые есть в обучении; уже просмотренное не фильтруется.
 - **Content** [2]. Каждой программе сопоставляется документ из токенов `cat=`, `genre=`, `dir=`, `act=`, векторизованный TF-IDF с L2-нормировкой. Профиль пользователя — взвешенное среднее векторов просмотренных программ (веса как в ALS). Кандидаты ранжируются по косинусу.
-- **Hybrid.** Взвешенное reciprocal rank fusion трёх списков (top-50 каждого метода): `score(i) = Σ_m w_m / (k0 + rank_m(i))`, где m ∈ {History, ALS, Popularity}.
+- **Hybrid.** Взвешенный вариант reciprocal rank fusion [5] для трёх списков (top-50 каждого метода): `score(i) = Σ_m w_m / (k0 + rank_m(i))`, где m ∈ {History, ALS, Popularity}.
   - Сетка: w_hist = 1 (масштаб весов не влияет на порядок), w_als ∈ {0,25; 0,5; 1; 2; 4}, w_pop ∈ {0; 0,1; 0,25; 0,5}, k0 ∈ {10; 60} — всего 40 конфигураций.
   - *Вариант Hybrid-days:* та же лучшая конфигурация, но с History-days вместо History.
 
@@ -120,6 +121,10 @@
 5. **Popularity-days на валидации** совпал с Popularity за недели 11–20 до пятого знака: топ-5 у них идентичен. На Kaggle он немного лучше обычной популярности.
 6. **Kaggle заметно ниже валидации у всех методов:** Hybrid-days 0,798 на тестовых пользователях валидации против 0,354 public, популярность 0,734 против 0,279. Лучший ALS и веса гибрида выбирались по той же валидации, поэтому их валидационные оценки оптимистичны.
 
+![Kaggle: финальный сабмит submission_hybrid_days.csv, private 0.33745](docs/kaggle_submissions.png)
+
+*Рисунок 1. Kaggle: финальный сабмит submission_hybrid_days.csv, private 0.33745*
+
 ### 4.3 Примеры
 
 Для тяжёлого (6 015 взаимодействий, 634 программы в обучении) и лёгкого (1 взаимодействие) тестового пользователя выведены топ-5 каждого метода (полные таблицы — в `results.md`).
@@ -160,3 +165,5 @@
 [3] B. Frederickson. implicit: Fast Python Collaborative Filtering for Implicit Datasets. https://github.com/benfred/implicit
 
 [4] sweet.tv — TV program recommender. Kaggle competition. https://www.kaggle.com/competitions/sweettv-tv-program-recommender
+
+[5] G. V. Cormack, C. L. A. Clarke, S. Buettcher. Reciprocal Rank Fusion outperforms Condorcet and Individual Rank Learning Methods. In *Proc. ACM SIGIR Conference on Research and Development in Information Retrieval*, 2009.
