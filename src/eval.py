@@ -333,10 +333,57 @@ def main():
     pop_d = popularity_days(train, pool, (19, 20))
     record("Popularity-days", "distinct (user, day) pairs, weeks 19-20", {}, pop_d, time.perf_counter() - t0)
 
-    write_results(rows, facts, test_lines, grid, len(eval_users), len(eval_test))
+    methods = {
+        "Popularity": {},
+        "History-days": hist_d,
+        f"ALS ({best_als_row['params'].split(', iter')[0]})": best_als,
+        "Content": cb,
+        "Hybrid-days": fused,
+    }
+    show_lines = showcase(train, train_us, truth, eval_test, methods, best_pop)
+    print("\n".join(show_lines))
+
+    write_results(rows, facts, test_lines, grid, len(eval_users), len(eval_test), show_lines)
 
 
-def write_results(rows, facts, test_lines, grid, n_all, n_test):
+def showcase(train, train_us, truth, eval_test, methods, fallback):
+    """Top-5 per method for the heaviest and lightest test user (by train interaction rows)."""
+    n_inter = train.groupby("user_id").size()
+    cand = n_inter[n_inter.index.isin(eval_test)].reset_index(name="n").sort_values(["n", "user_id"])
+    light = cand.user_id.iloc[0]
+    heavy = cand.sort_values(["n", "user_id"], ascending=[False, True]).user_id.iloc[0]
+
+    meta = pd.concat([pd.read_csv(DATA / f, usecols=["tv_show_id", "tv_show_title", "tv_show_category"])
+                      for f in [POOL_FILE] + [f for f in SCHEDULE_FILES if f != POOL_FILE]])
+    meta = meta.drop_duplicates("tv_show_id").set_index("tv_show_id")
+
+    lines = ["## Примеры: тяжёлый и лёгкий тестовый пользователь (valid)", "",
+             "Выбраны среди тестовых пользователей с непустым valid truth и хотя бы одним train-взаимодействием: "
+             "максимум и минимум числа строк взаимодействий в train (ничьи — по меньшему user_id). "
+             "«train» — шоу уже смотрено пользователем в неделях 11–20.", ""]
+    for label, u in (("Тяжёлый", heavy), ("Лёгкий", light)):
+        watched = set(train_us.loc[train_us.user_id == u, "tv_show_id"])
+        lines += [f"### {label}: user_id {u}", "",
+                  f"Train: {int(n_inter[u])} взаимодействий, {len(watched)} разных шоу. "
+                  f"Valid truth: {len(truth[u])} шоу.", "",
+                  "| Метод | # | tv_show_id | Название | Категория | в truth | в train |",
+                  "|---|---|---|---|---|---|---|"]
+        summary = []
+        for name, lists in methods.items():
+            recs = finalize(lists.get(u, []), fallback)
+            for r, it in enumerate(recs, 1):
+                title = str(meta.tv_show_title.get(it, "?")).replace("|", "\\|")
+                cat = meta.tv_show_category.get(it, "?")
+                lines.append(f"| {name if r == 1 else ''} | {r} | {it} | {title} | {cat} | "
+                             f"{'да' if it in truth[u] else '—'} | {'да' if it in watched else '—'} |")
+            summary.append(f"| {name} | {apk(recs, truth[u]):.4f} | {sum(it in truth[u] for it in recs)} | "
+                           f"{sum(it in watched for it in recs)} |")
+        lines += ["", "| Метод | AP@5 | попаданий в truth | уже смотрел в train |", "|---|---|---|---|"]
+        lines += summary + [""]
+    return lines
+
+
+def write_results(rows, facts, test_lines, grid, n_all, n_test, show_lines=()):
     vers = (f"Python {sys.version.split()[0]}, numpy {np.__version__}, pandas {pd.__version__}, "
             f"scipy {scipy.__version__}, scikit-learn {sklearn.__version__}, implicit {implicit.__version__}")
     lines = [
@@ -360,7 +407,8 @@ def write_results(rows, facts, test_lines, grid, n_all, n_test):
               "## Hybrid: топ-5 конфигураций", "", "| MAP@5 (все) | MAP@5 (тестовые) | k0 | w_als | w_pop |",
               "|---|---|---|---|---|"]
     lines += [f"| {g[0]:.5f} | {g[1]:.5f} | {g[2]} | {g[3]} | {g[4]} |" for g in grid[:5]]
-    lines += ["", "## Данные", ""] + [f"- {f}" for f in facts]
+    lines += [""] + list(show_lines)
+    lines += ["## Данные", ""] + [f"- {f}" for f in facts]
     lines += ["", "## Unit-тест MAP@5", "", "```"] + test_lines + ["```"]
     lines += ["", "## Окружение", "", f"- {vers}", f"- {hardware()}", ""]
     (ROOT / "results.md").write_text("\n".join(lines), encoding="utf-8")
