@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="ru" xml:lang="ru">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
@@ -176,31 +176,31 @@
   </style>
 </head>
 <body>
-<h1 id="рекомендация-телепрограмм-sweet.tv-по-логу-просмотров-популярность-история-als-и-их-гибрид">Рекомендация телепрограмм sweet.tv по логу просмотров: популярность, история, ALS и их гибрид</h1>
-<p><strong>Автор:</strong> [Имя Фамилия] · <strong>Дата:</strong> 24.10.2026</p>
-<p><strong>Соревнование:</strong> Kaggle <code>sweettv-tv-program-recommender</code> [4] · <strong>Код:</strong> https://github.com/Qwidji/sweettv-recsys</p>
+<h1 id="recommending-sweet.tv-tv-programmes-from-viewing-logs-popularity-history-als-and-their-hybrid">Recommending sweet.tv TV Programmes from Viewing Logs: Popularity, History, ALS and Their Hybrid</h1>
+<p><strong>Author:</strong> [First Name Last Name] · <strong>Date:</strong> 2026-10-24</p>
+<p><strong>Competition:</strong> Kaggle <code>sweettv-tv-program-recommender</code> [4] · <strong>Code:</strong> https://github.com/Qwidji/sweettv-recsys</p>
 <h2 id="abstract">Abstract</h2>
-<p>Работа решает задачу соревнования sweet.tv на Kaggle: по логу телепросмотров 4 914 пользователей за ISO-недели 11–30 2020 года и сетке эфира требуется для 1 260 пользователей предсказать 5 программ на недели 31–42, метрика MAP@5. Лог переводится во взаимодействия «пользователь–программа» через пересечение интервалов просмотра и эфира с порогом 300 секунд. На временной валидации (обучение на неделях 11–20, проверка на 21–30) сравниваются популярность, история пользователя, ALS для неявной обратной связи, контентная модель на TF-IDF и гибрид на взвешенном reciprocal rank fusion. Лучший результат даёт гибрид, в котором история ранжируется по числу разных дней просмотра: MAP@5 0,686 на валидации и 0,354 / 0,337 public / private score на Kaggle (late submission). Замена суммарного времени просмотра на число дней улучшила результат и на валидации, и на Kaggle.</p>
+<p>This work addresses the sweet.tv Kaggle competition: given a TV viewing log of 4,914 users over ISO weeks 11–30 of 2020 and the broadcast schedule, the task is to predict 5 programmes for each of 1,260 users for weeks 31–42, evaluated by MAP@5. The log is converted into user–programme interactions by intersecting viewing intervals with broadcast intervals, using a 300-second threshold. Under temporal validation (training on weeks 11–20, testing on weeks 21–30) we compare popularity, user history, ALS for implicit feedback, a TF-IDF content-based model, and a hybrid based on weighted reciprocal rank fusion. The best result is obtained by the hybrid in which history is ranked by the number of distinct viewing days: MAP@5 of 0.686 on validation and 0.354 / 0.337 public / private score on Kaggle (late submission). Replacing total viewing time with the number of days improved results both on validation and on Kaggle.</p>
 <h2 id="introduction">1. Introduction</h2>
-<p>Оператор sweet.tv предоставил лог просмотров линейных телеканалов и архив телепрограммы. Задача — для каждого из 1 260 пользователей из <code>submission.csv</code> выдать 5 идентификаторов программ (<code>tv_show_id</code>), которые он будет смотреть в следующем периоде; качество оценивается по MAP@5 [4].</p>
-<p>Особенности задачи, определившие решение:</p>
+<p>The operator sweet.tv provided a viewing log of linear TV channels and an archive of the TV schedule. For each of the 1,260 users in <code>submission.csv</code>, the task is to output 5 programme identifiers (<code>tv_show_id</code>) that the user will watch in the next period; quality is measured by MAP@5 [4].</p>
+<p>Properties of the task that shaped the solution:</p>
 <ul>
-<li><strong>В логе нет программ.</strong> Лог содержит канал (<code>vsetv_id</code>) и интервал просмотра, а программа восстанавливается только через сопоставление с сеткой эфира.</li>
-<li><strong>Разметка программ неполная.</strong> Около 89% строк расписания имеют <code>tv_show_id = 0</code>, то есть программа не размечена.</li>
-<li><strong>Рекомендовать можно только то, что выйдет в эфир.</strong> Пул кандидатов задаётся сеткой будущего периода: в финальном пуле 6 636 программ, из них лишь 3 073 встречались в обучающих данных.</li>
-<li><strong>Повторный просмотр — норма.</strong> Пользователи смотрят одни и те же новостные и регулярные программы, поэтому уже просмотренное рекомендовать разрешено.</li>
+<li><strong>The log contains no programmes.</strong> It records the channel (<code>vsetv_id</code>) and the viewing interval; the programme can only be recovered by matching against the broadcast schedule.</li>
+<li><strong>Programme labels are incomplete.</strong> About 89% of schedule rows have <code>tv_show_id = 0</code>, i.e. the programme is unlabelled.</li>
+<li><strong>Only programmes that will be broadcast can be recommended.</strong> The candidate pool is defined by the schedule of the future period: the final pool contains 6,636 programmes, of which only 3,073 appear in the training data.</li>
+<li><strong>Repeat viewing is the norm.</strong> Users watch the same news and recurring programmes, so recommending already watched programmes is allowed.</li>
 </ul>
-<p>Вклад работы:</p>
+<p>Contributions:</p>
 <ul>
-<li>воспроизводимый конвейер от сырых логов до сабмита: <code>src/join.py</code>, <code>src/eval.py</code>, <code>src/predict.py</code>;</li>
-<li>единый протокол временной валидации для пяти семейств методов;</li>
-<li>наблюдение, что для истории пользователя важнее регулярность (число разных дней просмотра), чем суммарное время.</li>
+<li>a reproducible pipeline from raw logs to submission: <code>src/join.py</code>, <code>src/eval.py</code>, <code>src/predict.py</code>;</li>
+<li>a single temporal validation protocol for five families of methods;</li>
+<li>the observation that, for user history, regularity (the number of distinct viewing days) matters more than total viewing time.</li>
 </ul>
 <h2 id="related-work">2. Related Work</h2>
-<p><strong>Неявная обратная связь.</strong> Hu, Koren и Volinsky [1] предложили матричную факторизацию для неявной обратной связи: наблюдаемые величины, например время просмотра, переводятся в бинарное предпочтение и вес уверенности, а модель обучается методом чередующихся наименьших квадратов (ALS). В их работе эксперименты проводились именно на данных просмотра цифрового телевидения. В нашей работе используется реализация ALS из библиотеки <code>implicit</code> [3]. Вес взаимодействия задаётся логарифмом от времени просмотра, близко по духу к логарифмическому масштабированию уверенности в [1].</p>
-<p><strong>Контентные рекомендации.</strong> Lops, de Gemmis и Semeraro [2] описывают контентные рекомендательные системы: профиль пользователя строится по признакам просмотренных объектов, а кандидаты ранжируются по сходству с профилем; одно из стандартных представлений — векторы TF-IDF и косинусная мера. Наша контентная модель следует этой схеме, используя метаданные расписания: категорию, жанры, режиссёра и актёров.</p>
+<p><strong>Implicit feedback.</strong> Hu, Koren and Volinsky [1] proposed matrix factorization for implicit feedback: observed quantities such as viewing time are turned into a binary preference and a confidence weight, and the model is trained by alternating least squares (ALS). Their experiments were conducted on digital television viewing data. We use the ALS implementation from the <code>implicit</code> library [3]. The interaction weight is a logarithm of viewing time, similar in spirit to the logarithmic confidence scaling in [1].</p>
+<p><strong>Content-based recommendation.</strong> Lops, de Gemmis and Semeraro [2] describe content-based recommender systems: a user profile is built from the features of consumed items, and candidates are ranked by similarity to the profile; a standard representation is TF-IDF vectors with cosine similarity. Our content model follows this scheme using schedule metadata: category, genres, director and actors.</p>
 <h2 id="method">3. Method</h2>
-<h3 id="данные-и-построение-взаимодействий">3.1 Данные и построение взаимодействий</h3>
+<h3 id="data-and-interaction-construction">3.1 Data and Interaction Construction</h3>
 <table>
 <colgroup>
 <col style="width: 33%" />
@@ -209,86 +209,86 @@
 </colgroup>
 <thead>
 <tr class="header">
-<th>Файл</th>
-<th>Строк</th>
-<th>Содержание</th>
+<th>File</th>
+<th>Rows</th>
+<th>Contents</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>dataset11-30.csv</code></td>
-<td>5 821 987</td>
+<td>5,821,987</td>
 <td><code>user_id, vsetv_id, start_time, stop_time, duraton</code></td>
 </tr>
 <tr class="even">
 <td><code>export_arh_11-20/21-30/31-42-final.csv</code></td>
-<td>1 074 235 / 1 074 394 / 1 295 378</td>
-<td>сетка: канал, начало, длительность, <code>tv_show_id</code>, категория, жанры, режиссёр, актёры</td>
+<td>1,074,235 / 1,074,394 / 1,295,378</td>
+<td>schedule: channel, start, duration, <code>tv_show_id</code>, category, genres, director, actors</td>
 </tr>
 <tr class="odd">
 <td><code>submission.csv</code></td>
-<td>1 260</td>
-<td><code>user_id</code>, 5 id через пробел</td>
+<td>1,260</td>
+<td><code>user_id</code>, 5 space-separated ids</td>
 </tr>
 </tbody>
 </table>
 <ul>
-<li><strong>Охват по времени.</strong> Лог покрывает 2020-03-09 – 2020-07-26 (ISO-недели 11–30). Числа в именах файлов расписания соответствуют ISO-неделям, расписание 31-42 доходит до 2020-10-19.</li>
-<li><strong>Форматы времени разные:</strong> в логе <code>%Y-%m-%d %H:%M:%S</code>, в расписании <code>%d.%m.%Y %H:%M:%S</code>.</li>
-<li><strong>Каналы.</strong> Из 202 каналов лога 197 есть в расписании, на них приходится 98,05% строк лога.</li>
-<li><strong>Тестовые пользователи.</strong> Все 1 260 есть в логе.</li>
+<li><strong>Time coverage.</strong> The log covers 2020-03-09 – 2020-07-26 (ISO weeks 11–30). The numbers in the schedule file names correspond to ISO weeks; the 31-42 schedule runs until 2020-10-19.</li>
+<li><strong>Time formats differ:</strong> <code>%Y-%m-%d %H:%M:%S</code> in the log, <code>%d.%m.%Y %H:%M:%S</code> in the schedule.</li>
+<li><strong>Channels.</strong> Of the 202 channels in the log, 197 are present in the schedule; they account for 98.05% of log rows.</li>
+<li><strong>Test users.</strong> All 1,260 are present in the log.</li>
 </ul>
-<p><strong>Сопоставление</strong> (<code>src/join.py</code>):</p>
+<p><strong>Matching</strong> (<code>src/join.py</code>):</p>
 <ol type="1">
-<li>Три файла расписания объединяются; конец программы вычисляется как <code>start + duration</code>.</li>
-<li>Удаляются дубли по <code>(channel_id, start_time)</code> (найден 1).</li>
-<li>Из лога отбрасываются строки с каналами, которых нет в расписании (113 579 строк, 1,95%).</li>
-<li>Для каждого просмотра ищутся пересекающиеся программы того же канала: программы сортируются по ключу «канал·10¹⁰ + время», границы диапазона находятся двумя бинарными поисками, левая граница — по накопленному максимуму концов программ, чтобы не терять накладывающиеся программы. Декартова произведения нет.</li>
-<li>Для каждой пары считается <code>overlap = min(stop, end) − max(start, prog_start)</code>.</li>
+<li>The three schedule files are concatenated; the programme end is computed as <code>start + duration</code>.</li>
+<li>Duplicates by <code>(channel_id, start_time)</code> are removed (1 found).</li>
+<li>Log rows on channels absent from the schedule are dropped (113,579 rows, 1.95%).</li>
+<li>For each viewing, overlapping programmes on the same channel are found: programmes are sorted by the key “channel·10¹⁰ + time”, the range boundaries are located by two binary searches, and the left boundary uses the running maximum of programme ends so that overlapping programmes are not lost. No Cartesian product is formed.</li>
+<li>For each pair, <code>overlap = min(stop, end) − max(start, prog_start)</code> is computed.</li>
 </ol>
-<p>«Просмотром» считается пара с overlap ≥ 300 с. Получено 4 610 846 таких пар, из них 51,6% приходятся на размеченные программы. В <code>interactions.parquet</code> сохраняются только они: 2 378 699 строк, 4 890 пользователей, 4 272 программы. Медиана overlap в этих данных — 1 193 с.</p>
-<p><strong>Проверка часового пояса.</strong> На 200 000 случайных просмотров измерялась доля стартов в пределах ±60 с от начала любой программы при сдвиге расписания на −3…+3 ч. Максимум — на нулевом сдвиге (0,0357), однако при +1…+3 ч доля почти та же (0,0351–0,0355), поэтому проверка лишь не противоречит отсутствию сдвига. Расписание не корректировалось.</p>
-<h3 id="методы">3.2 Методы</h3>
-<p>Все методы выдают ранжированный список из пула кандидатов. Если кандидатов меньше пяти или у пользователя нет истории, список добивается популярными программами. Повторы разрешены.</p>
+<p>A pair with overlap ≥ 300 s counts as a “view”. There are 4,610,846 such pairs, of which 51.6% fall on labelled programmes. Only these are stored in <code>interactions.parquet</code>: 2,378,699 rows, 4,890 users, 4,272 programmes. The median overlap in these data is 1,193 s.</p>
+<p><strong>Time zone check.</strong> On 200,000 random viewings, we measured the share of starts within ±60 s of the start of any programme when shifting the schedule by −3…+3 h. The maximum is at zero shift (0.0357), but at +1…+3 h the share is almost the same (0.0351–0.0355), so the check only fails to contradict the absence of a shift. The schedule was not adjusted.</p>
+<h3 id="methods">3.2 Methods</h3>
+<p>All methods produce a ranked list from the candidate pool. If there are fewer than five candidates or the user has no history, the list is padded with popular programmes. Repeats are allowed.</p>
 <ul>
-<li><strong>Popularity.</strong> Программы пула ранжируются по числу уникальных зрителей в обучающих данных — за все недели или за последние две.
+<li><strong>Popularity.</strong> Pool programmes are ranked by the number of unique viewers in the training data, either over all weeks or over the last two.
 <ul>
-<li><em>Вариант Popularity-days:</em> ранжирование по числу различных пар «пользователь, день».</li>
+<li><em>Popularity-days variant:</em> ranking by the number of distinct (user, day) pairs.</li>
 </ul></li>
-<li><strong>History.</strong> Программы пула, которые пользователь уже смотрел, ранжируются по суммарному overlap.
+<li><strong>History.</strong> Pool programmes the user has already watched are ranked by total overlap.
 <ul>
-<li><em>Вариант History-days:</em> ранжирование по числу разных календарных дней просмотра, при равенстве — по overlap.</li>
+<li><em>History-days variant:</em> ranking by the number of distinct calendar days of viewing, ties broken by overlap.</li>
 </ul></li>
-<li><strong>ALS</strong> [1, 3]. Матрица «пользователь × программа» с весом <code>log1p(Σ overlap_sec / 60)</code>, 20 итераций, <code>random_state = 42</code>. Сетка: factors ∈ {32, 64}, regularization ∈ {0,01; 0,1}. Оценки считаются как скалярное произведение факторов по программам пула, которые есть в обучении; уже просмотренное не фильтруется.</li>
-<li><strong>Content</strong> [2]. Каждой программе сопоставляется документ из токенов <code>cat=</code>, <code>genre=</code>, <code>dir=</code>, <code>act=</code>, векторизованный TF-IDF с L2-нормировкой. Профиль пользователя — взвешенное среднее векторов просмотренных программ (веса как в ALS). Кандидаты ранжируются по косинусу.</li>
-<li><strong>Hybrid.</strong> Взвешенный вариант reciprocal rank fusion [5] для трёх списков (top-50 каждого метода): <code>score(i) = Σ_m w_m / (k0 + rank_m(i))</code>, где m ∈ {History, ALS, Popularity}.
+<li><strong>ALS</strong> [1, 3]. A user × programme matrix with weight <code>log1p(Σ overlap_sec / 60)</code>, 20 iterations, <code>random_state = 42</code>. Grid: factors ∈ {32, 64}, regularization ∈ {0.01, 0.1}. Scores are dot products of factors over pool programmes present in training; already watched programmes are not filtered.</li>
+<li><strong>Content</strong> [2]. Each programme is mapped to a document of <code>cat=</code>, <code>genre=</code>, <code>dir=</code>, <code>act=</code> tokens, vectorized with TF-IDF and L2 normalization. The user profile is the weighted mean of the vectors of watched programmes (weights as in ALS). Candidates are ranked by cosine similarity.</li>
+<li><strong>Hybrid.</strong> A weighted variant of reciprocal rank fusion [5] over three lists (top-50 of each method): <code>score(i) = Σ_m w_m / (k0 + rank_m(i))</code>, where m ∈ {History, ALS, Popularity}.
 <ul>
-<li>Сетка: w_hist = 1 (масштаб весов не влияет на порядок), w_als ∈ {0,25; 0,5; 1; 2; 4}, w_pop ∈ {0; 0,1; 0,25; 0,5}, k0 ∈ {10; 60} — всего 40 конфигураций.</li>
-<li><em>Вариант Hybrid-days:</em> та же лучшая конфигурация, но с History-days вместо History.</li>
+<li>Grid: w_hist = 1 (the scale of the weights does not affect the order), w_als ∈ {0.25, 0.5, 1, 2, 4}, w_pop ∈ {0, 0.1, 0.25, 0.5}, k0 ∈ {10, 60}, 40 configurations in total.</li>
+<li><em>Hybrid-days variant:</em> the same best configuration, with History-days instead of History.</li>
 </ul></li>
 </ul>
 <h2 id="experiments">4. Experiments</h2>
-<h3 id="протокол">4.1 Протокол</h3>
-<p><strong>Валидация</strong> (<code>src/eval.py</code>):</p>
+<h3 id="protocol">4.1 Protocol</h3>
+<p><strong>Validation</strong> (<code>src/eval.py</code>):</p>
 <ul>
-<li><strong>Разбиение:</strong> обучение на неделях 11–20 (562 815 пар «пользователь–программа», 4 833 пользователя), проверка на неделях 21–30.</li>
-<li><strong>Пул:</strong> <code>tv_show_id ≠ 0</code> из расписания 21-30, 6 363 программы, из них 2 154 есть в обучении.</li>
-<li><strong>Ground truth</strong> — множество программ, просмотренных пользователем в неделях 21–30; 99,98% пар truth лежат в пуле.</li>
-<li><strong>Пользователи в оценке:</strong> 4 799 с непустым truth, из них 57 без истории в обучении. Отдельно считается подмножество 1 246 тестовых пользователей.</li>
-<li><strong>Метрика:</strong> MAP@5 со знаменателем min(5, |truth|); реализация покрыта модульным тестом на пяти вручную посчитанных примерах.</li>
+<li><strong>Split:</strong> training on weeks 11–20 (562,815 user–programme pairs, 4,833 users), testing on weeks 21–30.</li>
+<li><strong>Pool:</strong> <code>tv_show_id ≠ 0</code> from the 21-30 schedule, 6,363 programmes, of which 2,154 appear in training.</li>
+<li><strong>Ground truth:</strong> the set of programmes the user watched in weeks 21–30; 99.98% of truth pairs lie in the pool.</li>
+<li><strong>Evaluated users:</strong> 4,799 with non-empty truth, of whom 57 have no training history. The subset of 1,246 test users is reported separately.</li>
+<li><strong>Metric:</strong> MAP@5 with denominator min(5, |truth|); the implementation is covered by a unit test on five hand-computed examples.</li>
 </ul>
-<p><strong>Финальные сабмиты</strong> (<code>src/predict.py</code>):</p>
+<p><strong>Final submissions</strong> (<code>src/predict.py</code>):</p>
 <ul>
-<li>обучение на неделях 11–30 (934 181 пара);</li>
-<li>пул из расписания 31-42 (6 636 программ, 3 073 из них есть в обучении);</li>
-<li>популярность — по неделям 29–30; двое тестовых пользователей без истории получают популярные программы;</li>
-<li>каждый файл проверяется: 1 260 строк в порядке шаблона, ровно 5 разных ненулевых id из пула;</li>
-<li>все сабмиты отправлены как <strong>late submissions</strong>: соревнование закрыто 2020-11-21. Public и private score возвращает Kaggle, но на лидерборд они не попадают;</li>
-<li>финальный (designated) сабмит — <code>submission_hybrid_days.csv</code>, private 0,33745.</li>
+<li>training on weeks 11–30 (934,181 pairs);</li>
+<li>pool from the 31-42 schedule (6,636 programmes, 3,073 of which appear in training);</li>
+<li>popularity over weeks 29–30; the two test users without history receive popular programmes;</li>
+<li>each file is checked: 1,260 rows in template order, exactly 5 distinct non-zero ids from the pool;</li>
+<li>all submissions were made as <strong>late submissions</strong>: the competition closed on 2020-11-21. Kaggle returns public and private scores, but they do not appear on the leaderboard;</li>
+<li>the final (designated) submission is <code>submission_hybrid_days.csv</code>, private 0.33745.</li>
 </ul>
-<p><strong>Окружение:</strong> Python 3.13.5, numpy 2.5.3, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1, implicit 0.7.3; Apple M1, 8 CPU, 8 GB RAM. Seed = 42.</p>
-<h3 id="результаты">4.2 Результаты</h3>
-<p><strong>Таблица 1.</strong> MAP@5 на валидации и на Kaggle. Время — обучение и предсказание на валидации.</p>
+<p><strong>Environment:</strong> Python 3.13.5, numpy 2.5.3, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1, implicit 0.7.3; Apple M1, 8 CPU, 8 GB RAM. Seed = 42.</p>
+<h3 id="results">4.2 Results</h3>
+<p><strong>Table 1.</strong> MAP@5 on validation and on Kaggle. Time covers training and prediction on validation.</p>
 <table style="width:100%;">
 <colgroup>
 <col style="width: 14%" />
@@ -301,139 +301,139 @@
 </colgroup>
 <thead>
 <tr class="header">
-<th>Метод</th>
-<th>Параметры</th>
-<th>Valid, все</th>
-<th>Valid, тестовые</th>
+<th>Method</th>
+<th>Parameters</th>
+<th>Valid, all</th>
+<th>Valid, test</th>
 <th>Kaggle public</th>
 <th>Kaggle private</th>
-<th>Время, с</th>
+<th>Time, s</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>Popularity</td>
-<td>уник. зрители, нед. 11–20</td>
-<td>0,61945</td>
-<td>0,73167</td>
+<td>unique viewers, wk 11–20</td>
+<td>0.61945</td>
+<td>0.73167</td>
 <td>—</td>
 <td>—</td>
-<td>0,1</td>
+<td>0.1</td>
 </tr>
 <tr class="even">
 <td>Popularity</td>
-<td>уник. зрители, нед. 19–20 (Kaggle: 29–30)</td>
-<td>0,62279</td>
-<td>0,73417</td>
-<td>0,27903</td>
-<td>0,27504</td>
-<td>0,0</td>
+<td>unique viewers, wk 19–20 (Kaggle: 29–30)</td>
+<td>0.62279</td>
+<td>0.73417</td>
+<td>0.27903</td>
+<td>0.27504</td>
+<td>0.0</td>
 </tr>
 <tr class="odd">
 <td>Popularity-days</td>
-<td>пары «пользователь, день», нед. 19–20 (29–30)</td>
-<td>0,61945</td>
-<td>0,73167</td>
-<td>0,29133</td>
-<td>0,28631</td>
-<td>0,0</td>
+<td>(user, day) pairs, wk 19–20 (29–30)</td>
+<td>0.61945</td>
+<td>0.73167</td>
+<td>0.29133</td>
+<td>0.28631</td>
+<td>0.0</td>
 </tr>
 <tr class="even">
 <td>History</td>
-<td>по overlap</td>
-<td>0,56280</td>
-<td>0,67345</td>
+<td>by overlap</td>
+<td>0.56280</td>
+<td>0.67345</td>
 <td>—</td>
 <td>—</td>
-<td>0,2</td>
+<td>0.2</td>
 </tr>
 <tr class="odd">
 <td>History-days</td>
-<td>по числу дней</td>
-<td>0,65310</td>
-<td>0,76823</td>
-<td>0,35200</td>
-<td>0,32653</td>
-<td>0,4</td>
+<td>by number of days</td>
+<td>0.65310</td>
+<td>0.76823</td>
+<td>0.35200</td>
+<td>0.32653</td>
+<td>0.4</td>
 </tr>
 <tr class="even">
 <td>ALS</td>
-<td>f=32, reg=0,01</td>
-<td>0,48842</td>
-<td>0,54516</td>
+<td>f=32, reg=0.01</td>
+<td>0.48842</td>
+<td>0.54516</td>
 <td>—</td>
 <td>—</td>
-<td>1,6</td>
+<td>1.6</td>
 </tr>
 <tr class="odd">
 <td>ALS</td>
-<td>f=32, reg=0,1</td>
-<td>0,48941</td>
-<td>0,54618</td>
+<td>f=32, reg=0.1</td>
+<td>0.48941</td>
+<td>0.54618</td>
 <td>—</td>
 <td>—</td>
-<td>1,5</td>
+<td>1.5</td>
 </tr>
 <tr class="even">
 <td>ALS</td>
-<td>f=64, reg=0,01</td>
-<td>0,41814</td>
-<td>0,45097</td>
+<td>f=64, reg=0.01</td>
+<td>0.41814</td>
+<td>0.45097</td>
 <td>—</td>
 <td>—</td>
-<td>2,6</td>
+<td>2.6</td>
 </tr>
 <tr class="odd">
 <td>ALS</td>
-<td>f=64, reg=0,1</td>
-<td>0,41907</td>
-<td>0,45197</td>
+<td>f=64, reg=0.1</td>
+<td>0.41907</td>
+<td>0.45197</td>
 <td>—</td>
 <td>—</td>
-<td>2,6</td>
+<td>2.6</td>
 </tr>
 <tr class="even">
 <td>Content</td>
 <td>TF-IDF</td>
-<td>0,17469</td>
-<td>0,19350</td>
+<td>0.17469</td>
+<td>0.19350</td>
 <td>—</td>
 <td>—</td>
-<td>4,4</td>
+<td>4.4</td>
 </tr>
 <tr class="odd">
 <td>Hybrid</td>
-<td>k0=10, w_als=0,5, w_pop=0,5</td>
-<td>0,65976</td>
-<td>0,77418</td>
-<td>0,32225</td>
-<td>0,29500</td>
-<td>4,2 (сетка)</td>
+<td>k0=10, w_als=0.5, w_pop=0.5</td>
+<td>0.65976</td>
+<td>0.77418</td>
+<td>0.32225</td>
+<td>0.29500</td>
+<td>4.2 (grid)</td>
 </tr>
 <tr class="even">
 <td><strong>Hybrid-days</strong></td>
-<td>те же веса, History-days</td>
-<td><strong>0,68553</strong></td>
-<td><strong>0,79766</strong></td>
-<td><strong>0,35425</strong></td>
-<td><strong>0,33745</strong></td>
-<td>0,1</td>
+<td>same weights, History-days</td>
+<td><strong>0.68553</strong></td>
+<td><strong>0.79766</strong></td>
+<td><strong>0.35425</strong></td>
+<td><strong>0.33745</strong></td>
+<td>0.1</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Наблюдения из таблицы:</strong></p>
+<p><strong>Observations:</strong></p>
 <ol type="1">
-<li><strong>Популярность — сильный бейзлайн.</strong> На валидации она превосходит History, ALS и Content по отдельности.</li>
-<li><strong>ALS:</strong> 32 фактора лучше 64 при обеих регуляризациях, регуляризация почти не влияет.</li>
-<li><strong>Гибрид.</strong> Все пять лучших конфигураций Hybrid имеют w_pop = 0,5, то есть оптимум лежит на границе сетки. Вес ALS в лучшей конфигурации — 0,5; при w_als = 1 MAP@5 на всех пользователях падает до 0,65409.</li>
-<li><strong>Переход к числу дней</strong> улучшает History (0,563 → 0,653) и гибрид (0,660 → 0,686) на валидации. На Kaggle порядок тот же: Hybrid-days 0,354 / 0,337 против 0,322 / 0,295 у Hybrid. History-days без ALS и популярности (0,352 / 0,327) тоже обходит прежний Hybrid.</li>
-<li><strong>Popularity-days на валидации</strong> совпал с Popularity за недели 11–20 до пятого знака: топ-5 у них идентичен. На Kaggle он немного лучше обычной популярности.</li>
-<li><strong>Kaggle заметно ниже валидации у всех методов:</strong> Hybrid-days 0,798 на тестовых пользователях валидации против 0,354 public, популярность 0,734 против 0,279. Лучший ALS и веса гибрида выбирались по той же валидации, поэтому их валидационные оценки оптимистичны.</li>
+<li><strong>Popularity is a strong baseline.</strong> On validation it outperforms History, ALS and Content individually.</li>
+<li><strong>ALS:</strong> 32 factors are better than 64 for both regularization values; regularization has almost no effect.</li>
+<li><strong>Hybrid.</strong> All five best Hybrid configurations have w_pop = 0.5, i.e. the optimum lies on the grid boundary. The ALS weight in the best configuration is 0.5; with w_als = 1, MAP@5 over all users drops to 0.65409.</li>
+<li><strong>Switching to the number of days</strong> improves History (0.563 → 0.653) and the hybrid (0.660 → 0.686) on validation. The order is the same on Kaggle: Hybrid-days 0.354 / 0.337 versus 0.322 / 0.295 for Hybrid. History-days without ALS and popularity (0.352 / 0.327) also beats the original Hybrid.</li>
+<li><strong>Popularity-days on validation</strong> matches Popularity over weeks 11–20 to the fifth decimal place: their top-5 lists are identical. On Kaggle it is slightly better than plain popularity.</li>
+<li><strong>Kaggle scores are much lower than validation for all methods:</strong> Hybrid-days scores 0.798 on validation test users versus 0.354 public; popularity 0.734 versus 0.279. The best ALS and the hybrid weights were selected on the same validation, so their validation scores are optimistic.</li>
 </ol>
-<p><img src="docs/kaggle_submissions.png" alt="Kaggle: late submissions, финальный сабмит submission_hybrid_days.csv, private 0.33745" /></p>
-<p><em>Рисунок 1. Kaggle: все сабмиты — late submissions (соревнование закрыто 2020-11-21), скоры возвращены Kaggle, но на лидерборд не попадают. Финальный (designated) сабмит — submission_hybrid_days.csv, private 0.33745.</em></p>
-<h3 id="примеры">4.3 Примеры</h3>
-<p>Для тяжёлого (6 015 взаимодействий, 634 программы в обучении) и лёгкого (1 взаимодействие) тестового пользователя выведены топ-5 каждого метода (полные таблицы — в <code>results.md</code>).</p>
+<p><img src="docs/kaggle_submissions.png" alt="Kaggle: late submissions, final submission submission_hybrid_days.csv, private 0.33745" /></p>
+<p><em>Figure 1. Kaggle: all submissions are late submissions (the competition closed on 2020-11-21); scores are returned by Kaggle but do not appear on the leaderboard. The final (designated) submission is submission_hybrid_days.csv, private 0.33745.</em></p>
+<h3 id="examples">4.3 Examples</h3>
+<p>For a heavy test user (6,015 interactions, 634 programmes in training) and a light one (1 interaction), we print the top-5 of each method (full tables in <code>results.md</code>).</p>
 <table>
 <colgroup>
 <col style="width: 20%" />
@@ -444,67 +444,67 @@
 </colgroup>
 <thead>
 <tr class="header">
-<th>Метод</th>
-<th>AP@5, тяжёлый</th>
-<th>Уже смотрел (из 5), тяжёлый</th>
-<th>AP@5, лёгкий</th>
-<th>Уже смотрел (из 5), лёгкий</th>
+<th>Method</th>
+<th>AP@5, heavy</th>
+<th>Already watched (of 5), heavy</th>
+<th>AP@5, light</th>
+<th>Already watched (of 5), light</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>Popularity</td>
-<td>1,0000</td>
+<td>1.0000</td>
 <td>5</td>
-<td>0,1000</td>
+<td>0.1000</td>
 <td>0</td>
 </tr>
 <tr class="even">
 <td>History-days</td>
-<td>1,0000</td>
+<td>1.0000</td>
 <td>5</td>
-<td>0,0667</td>
+<td>0.0667</td>
 <td>1</td>
 </tr>
 <tr class="odd">
 <td>ALS</td>
-<td>0,0000</td>
+<td>0.0000</td>
 <td>4</td>
-<td>0,0000</td>
+<td>0.0000</td>
 <td>1</td>
 </tr>
 <tr class="even">
 <td>Content</td>
-<td>0,1000</td>
+<td>0.1000</td>
 <td>3</td>
-<td>0,0000</td>
+<td>0.0000</td>
 <td>1</td>
 </tr>
 <tr class="odd">
 <td>Hybrid-days</td>
-<td>1,0000</td>
+<td>1.0000</td>
 <td>5</td>
-<td>0,0500</td>
+<td>0.0500</td>
 <td>1</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Тяжёлый пользователь.</strong> Popularity, History-days и Hybrid-days выдают новостные и регулярные программы («ТСН», «Факты. Утро», «Сегодня»), все пять — в его truth. ALS предлагает фильмы и развлекательные программы, которые он смотрел в обучении, но не в валидации.</p>
-<p><strong>Лёгкий пользователь.</strong> Все методы, кроме Popularity, ставят первым единственный просмотренный фильм. Его в truth нет, поэтому единственное попадание («Факты. Утро») сдвигается ниже.</p>
+<p><strong>Heavy user.</strong> Popularity, History-days and Hybrid-days return news and recurring programmes (“TSN”, “Fakty. Utro”, “Segodnya”); all five are in the user’s truth. ALS suggests films and entertainment programmes that the user watched in training but not in validation.</p>
+<p><strong>Light user.</strong> All methods except Popularity put the only watched film first. It is not in the truth, so the single hit (“Fakty. Utro”) moves down the list.</p>
 <h2 id="discussion">5. Discussion</h2>
 <ul>
-<li>[Интерпретация: почему регулярность просмотра (число дней) важнее суммарного времени]</li>
-<li>[Разрыв между валидацией и Kaggle: возможные причины]</li>
-<li>[Почему ALS и контентная модель уступают популярности]</li>
-<li>[Ограничения: неразмеченные программы, пул вне обучения, подбор весов на валидации]</li>
-<li>[Дальнейшая работа]</li>
+<li>[Interpretation: why viewing regularity (number of days) matters more than total time]</li>
+<li>[Gap between validation and Kaggle: possible causes]</li>
+<li>[Why ALS and the content model fall behind popularity]</li>
+<li>[Limitations: unlabelled programmes, pool items unseen in training, weights tuned on validation]</li>
+<li>[Future work]</li>
 </ul>
 <h2 id="ai-usage">6. AI Usage</h2>
 <ul>
-<li>[Какие инструменты использовались]</li>
-<li>[Для каких этапов]</li>
-<li>[Как проверялись результаты]</li>
-<li>[Что сделано вручную]</li>
+<li>[Which tools were used]</li>
+<li>[For which stages]</li>
+<li>[How results were verified]</li>
+<li>[What was done manually]</li>
 </ul>
 <h2 id="references">References</h2>
 <p>[1] Y. Hu, Y. Koren, C. Volinsky. Collaborative Filtering for Implicit Feedback Datasets. In <em>Proc. IEEE International Conference on Data Mining (ICDM)</em>, 2008.</p>
